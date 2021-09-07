@@ -1,0 +1,29 @@
+
+To run coingeko_scraper.py
+
+
+Step 1 - Pre-processing
+
+choose the desired time interval of the data 
+convert start and end of the time interval into UNIX format using https://www.epochconverter.com/
+Lines 16-17: use time interval in UNIX format as values of the variables "from_time" and "to_time" 
+
+
+Step 2a - To scrape prices of the largest 100 cryptos 
+
+Line 95: set the input of the function "get_df_by_coin_time_range_to_csv" as "data_type['prices']"
+Line 101: set the input of function ".tocsv" as "datadata_type['prices']" to correctly save the csv file 
+Run!
+
+Step 2b - To scrape market caps of the largest 100 cryptos
+
+Repeat Step 1
+Line 95: set the input of the function "get_df_by_coin_time_range_to_csv" as "data_type['market caps']"
+Line 101: set the input of function ".tocsv" as "datadata_type['market caps']" to correctly save the csv file 
+Run!
+
+
+Note to self: 
+import sys
+sys.path
+sys.path.append('/usr/local/lib/python3.9/site-packages')

@@ -1,18 +1,14 @@
 rm(list = ls(all = TRUE))
 
-wdir = "/Users/annshchekina/Desktop/Kod/FRM_All"
+wdir = "/Users/annshchekina/Desktop/Kod/FRM_Crypto"
 
 channel = "Crypto"
 tau = 0.05
 s = 63
 
 #Plot parameter defined based on the outliers
-if (channel == "Crypto") {
-  lambda_cutoff = 0.1359
-  M_macro = 5} else 
-if (channel == "EM") {
-  lambda_cutoff = 10
-  M_macro = 12}
+lambda_cutoff = 0.1359
+M_macro = 5
 
 setwd(wdir)
 
@@ -84,15 +80,20 @@ len = sapply(1:N, function(i) length(allcentralities[[i]]$OutDegree))
 indegree_btc = sapply(1:N, function(i) allcentralities[[i]]$InDegree["BTC"]) / len
 lambda_btc = read.csv(paste0(input_path, "/Lambda/lambdas_wide.csv"))[, c("date", "BTC")]
 lambda_btc = merge(lambda_btc, FRM_index, by = "date")[, 2]
+b_btc = read.csv(paste0(input_path, "/Lambda/constraint_wide.csv"))[, c("date", "BTC")]
+b_btc = merge(b_btc, FRM_index, by = "date")[, 2]
 indegree_eth = sapply(1:N, function(i) allcentralities[[i]]$InDegree["ETH"]) / len
 lambda_eth = read.csv(paste0(input_path, "/Lambda/lambdas_wide.csv"))[, "ETH"]
+b_eth = read.csv(paste0(input_path, "/Lambda/constraint_wide.csv"))[, "ETH"]
 
 
 #Manually calculate
 
 btc_id = matrix(0, N, 1)
+eth_id = matrix(0, N, 1)
 tot_d = matrix(0, N, 1)
 btc_wid = matrix(0, N, 1)
+eth_wid = matrix(0, N, 1)
 tot_wd = matrix(0, N, 1)
 
 for(i in 1:N) {
@@ -107,6 +108,18 @@ for(i in 1:N) {
   tot_wd[i, 1] = sum(abs(adj_matrix)) 
 }
 
+eth_N0 = which(is.na(indegree_eth)) %>% length() + 10
+
+for(i in eth_N0:N) {
+  data = read.csv(paste0(output_path, "/Adj_Matrices/adj_matix_", 
+                         gsub("-", "", FRM_index$date[i]), ".csv"), 
+                  header = TRUE, sep = "," , row.names = 1)
+  M_stock = ncol(data)-M_macro
+  adj_matrix = data.matrix(data[1:M_stock, 1:M_stock])
+  eth_id[i, 1] = sum(adj_matrix["ETH",] != 0) 
+  eth_wid[i, 1] = sum(abs(adj_matrix["ETH",])) 
+}
+
 
 png(paste0(output_path, "/Centrality/BTC_id.png"), 
     width = 900, height = 600, bg = "transparent")
@@ -114,6 +127,22 @@ png(paste0(output_path, "/Centrality/BTC_id.png"),
 par(mar = c(5, 4, 4, 4) + 0.3)
 plot(lambda_btc, type = "l", col = "blue", xlab = "", 
      ylab = "BTC lambda", xaxt = "n", lwd = 2)
+par(new = TRUE)
+plot(btc_id, type = "l", col = "red", axes = FALSE, 
+     xlab = "", ylab = "", xaxt = "n")
+axis(side = 4, at = pretty(range(btc_id)))
+ll = which(FRM_index$date %in% plot_labels)
+axis(1, at = ll, labels = plot_labels)
+mtext("In-degree centrality", side = 4, line = 3)
+
+dev.off()
+
+png(paste0(output_path, "/Centrality/BTC_id_b.png"), 
+    width = 900, height = 600, bg = "transparent")
+
+par(mar = c(5, 4, 4, 4) + 0.3)
+plot(b_btc, type = "l", col = "green", xlab = "", 
+     ylab = "Optimal constraint level", xaxt = "n", lwd = 2)
 par(new = TRUE)
 plot(btc_id, type = "l", col = "red", axes = FALSE, 
      xlab = "", ylab = "", xaxt = "n")
@@ -141,6 +170,21 @@ mtext("Weighted abs in-degree centrality", side = 4, line = 3)
 
 dev.off()
 
+png(paste0(output_path, "/Centrality/BTC_wid_b.png"), 
+    width = 900, height = 600, bg = "transparent")
+
+par(mar = c(5, 4, 4, 4) + 0.3)
+plot(b_btc, type = "l", col = "green", xlab = "", 
+     ylab = "Optimal constraint level", xaxt = "n", lwd = 2)
+par(new = TRUE)
+plot(btc_wid, type = "l", col = "red", axes = FALSE, 
+     xlab = "", ylab = "", xaxt = "n")
+axis(side = 4, at = pretty(range(btc_wid)))
+ll = which(FRM_index$date %in% plot_labels)
+axis(1, at = ll, labels = plot_labels)
+mtext("Weighted abs in-degree centrality", side = 4, line = 3)
+
+dev.off()
 
 png(paste0(output_path, "/Centrality/tot_d.png"), 
     width = 900, height = 600, bg = "transparent")
@@ -179,19 +223,38 @@ dev.off()
 png(paste0(output_path, "/Centrality/ETH_indegree.png"), 
     width = 900, height = 600, bg = "transparent")
 
-eth_N0 = which(is.na(indegree_eth)) %>% length() + 1
-eth_N1 = length(indegree_eth)
+eth_N0 = which(eth_id==0) %>% length() + 10
 
 par(mar = c(5, 4, 4, 4) + 0.3)
-plot(lambda_eth, type = "l", col = "blue", xlab = "", 
+plot(lambda_eth[eth_N0:N], type = "l", col = "blue", xlab = "", 
      ylab = "ETH lambda", xaxt = "n", lwd = 2)
 par(new = TRUE)
-plot(indegree_eth, type = "l", col = "red", axes = FALSE, 
+plot(eth_id[eth_N0:N], type = "l", col = "red", axes = FALSE, 
      xlab = "", ylab = "", xaxt = "n")
 axis(side = 4, at = pretty(range(indegree_eth)))
-ll = which(FRM_index$date %in% plot_labels)
-axis(1, at = ll, labels = plot_labels)
+plot_labels_eth = FRM_index$date[eth_N0:N]
+N_eth = length(plot_labels_eth)
+div = floor(N_eth/5)
+plot_labels_eth = plot_labels_eth[c(1, div, 2*div, 3*div, 4*div, N_eth)]
+ll = which(FRM_index$date %in% plot_labels_eth)
+axis(1, at = ll, labels = plot_labels_eth)
 mtext("In-degree centrality", side = 4, line = 3)
+
+dev.off()
+
+png(paste0(output_path, "/Centrality/ETH_indegree_b.png"), 
+    width = 900, height = 600, bg = "transparent")
+
+par(mar = c(5, 4, 4, 4) + 0.3)
+plot(b_eth[eth_N0:eth_N1], type = "l", col = "green", xlab = "", 
+     ylab = "Optimal constraint level", xaxt = "n", lwd = 2)
+par(new = TRUE)
+plot(eth_wid[eth_N0:eth_N1], type = "l", col = "red", axes = FALSE, 
+     xlab = "", ylab = "", xaxt = "n")
+axis(side = 4, at = pretty(range(indegree_eth)))
+ll = which(FRM_index$date %in% plot_labels_eth)
+axis(1, at = ll, labels = plot_labels_eth)
+mtext("Weighted abs in-degree centrality", side = 4, line = 3)
 
 dev.off()
 

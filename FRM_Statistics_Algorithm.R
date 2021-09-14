@@ -344,7 +344,8 @@ FRM_Quantile_Regression <- function(Xd, j, a, max.steps, eps1 = 10^(-10), eps2 =
   lambda <- lambda[seq(k+1)]
   #lamb.the <- lamb.the[seq(k+1)]
   
-  object <- list(call = call, beta0 = beta0, beta = beta, Elbow = Elbow.list[seq(k+1)], V = V.list[seq(k+1)], lambda=lambda, s=sdistance[seq(k+1)], Csic=Csic[seq(k+1)], Cgacv=Cgacv[seq(k+1)], FRM_Condition = FRM_Condition)
+  object <- list(call = call, beta0 = beta0, beta = beta, Elbow = Elbow.list[seq(k+1)], V = V.list[seq(k+1)], lambda=lambda, 
+                 s=sdistance[seq(k+1)], Csic=Csic[seq(k+1)], Cgacv=Cgacv[seq(k+1)], FRM_Condition = FRM_Condition)
   object
 }
 
@@ -358,7 +359,7 @@ qrL1Ini <- function(x, y, a, eps=10^(-10)) {
   m <- dim(x)[2]
   yr <- sort(y)
   ### Two cases 
-  quant <- yr[ floor(n*a)+1 ]
+  quant <- yr[floor(n*a)+1]
   index <- match(quant, y)
   indm <- seq(m)
   indE <- index
@@ -366,14 +367,14 @@ qrL1Ini <- function(x, y, a, eps=10^(-10)) {
   indL <- seq(y)[y < y[index]]
   indV <- NULL
   beta0<-quant
-  beta <- rep(0,m)
+  beta <- rep(0, m)
   ###current f=beta0
   residual <- y-beta0
   inactive <- indm
   tmpE <- indE
   tmpL <- indL
   tmpR <- indR
-  tmpb <- c(1,0)
+  tmpb <- c(1, 0)
   tmplvar <- length(tmpb)
   uvar <- matrix(0, nrow=tmplvar, ncol=length(inactive))
   lambdavar <- rep(Inf, length(inactive))
@@ -442,7 +443,7 @@ qrL1Ini <- function(x, y, a, eps=10^(-10)) {
   #residual[indR] <- residual[indR] - delta*gamR
   #residual [indE] <- 0 
   ########################
-  return(list(beta=beta, beta0=beta0, u=u, u0=u0, quant=quant,lambda = lambda,
+  return(list(beta=beta, beta0=beta0, u=u, u0=u0, quant=quant, lambda = lambda,
               indV=indV, indE=indE, indR=indR, indL=indL, residual=residual))
 }
 
@@ -482,15 +483,14 @@ pf <- function(beta0, y0, tau) {
     
     #xname<-"|beta|/max|beta|"                
     xname<-"s" 
-    matplot(s1, coef1, xlab = xname, ..., type = "b", lty=rep(1,dim(coef1)[2]),lwd=2,
+    matplot(s1, coef1, xlab = xname, ..., type = "b", lty=rep(1, dim(coef1)[2]), lwd=2,
             pch = "*", ylab = "Coefficients", cex.lab=1.5, cex.axis=1.5)
     #title("Quantile Lasso Path",line=2.5)
     abline(h = 0, lty = 3)
-    axis(4, at = coef1[nrow(coef1),  ], label = paste(cnums
-    ), cex = 2, cex.lab=2, cex.axis=1.5, adj = 1)
+    axis(4, at = coef1[nrow(coef1),  ], label = paste(cnums), cex = 2, cex.lab=2, cex.axis=1.5, adj = 1)
     if(breaks) {
       #axis(3, at = s1, labels = paste(seq(s1)-1),cex=.8)
-      abline(v = s1,lwd=0.5,col="grey")
+      abline(v = s1, lwd=0.5, col="grey")
     }
     
     invisible()

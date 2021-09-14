@@ -4,15 +4,14 @@ rm(list = ls(all = TRUE))
 
 #----------------------------------------START UPDATE----------------------------------------
 
-wdir = "/Users/annshchekina/Desktop/Kod/FRM_All"
+wdir = "/Users/annshchekina/Desktop/Kod/FRM_Crypto"
 
-#Choose between "Americas", "Europe", "Crypto", "SP500", "ER", "Asia", "EM"
 channel = "Crypto"
 
 #Data source
 date_end_source = 20210709
 #Index output, varying companies
-date_start = 20190401
+date_start = 20150201
 date_end = 20210709
 #Network output, fixed companies
 date_start_fixed = 20210601
@@ -35,37 +34,10 @@ L = 5
 
 #Number of largest companies, highlighted node for network graph,
 #plot parameter defined based on the outliers
-if (channel == "Americas") {
-  date_start_source = 20190603
-  stock_main = "??"
-  J = 100} else 
-if (channel == "Europe") {
-  date_start_source = 20191203
-  stock_main = "??"
-  J = 100} else     
-if (channel == "Crypto") {
-  date_start_source = 20141128
-  lambda_cutoff = 0.1359 
-  stock_main = "BTC"
-  J = 15} else 
-if (channel == "ER") {
-  date_start_source = 20180102
-  stock_main = "??"
-  J = 11} else 
-if (channel == "Asia") {
-  date_start_source = 20190102
-  stock_main = "X601628.CH.EQUITY"
-  J = 50} else
-if (channel == "EM") {
-  date_start_source = 20190101
-  lambda_cutoff = 0.4 
-  stock_main = "ELEKTRA..MF.Equity"
-  J = 25} else
-if (channel == "SP500") {
-  date_start_source = 20190103
-  stock_main = "TFC.UN.EQUITY"
-  J = 100}
-
+date_start_source = 20141128
+lambda_cutoff = 0.1359 
+stock_main = "BTC"
+J = 15
 #-----------------------------------------END UPDATE-----------------------------------------
 
 setwd(wdir)
@@ -94,7 +66,7 @@ options(digits=6)
 
 ## 1. Data Preprocess
 
-#Note: requires additional preprocessing for i.a. Crypto channel
+#Note: requires additional preprocessing 
 
 mktcap = read.csv(file = paste0(input_path, "/", channel, "_Mktcap_", 
                   date_end_source, ".csv"), header = TRUE) %>% as.matrix()
@@ -131,8 +103,6 @@ all_prices[, (M_stock+2):(M+1)] = all_prices[, (M_stock+2):(M+1)] %>% na.locf()
 #all_prices = all_prices[-c(377,603,716,895,896),]
 
 ticker_str = all_prices$ticker[-1]
-if (channel == "SP500") ticker_str = ticker_str %>% 
-  as.Date(format = "%d.%m.%Y") %>% sort()
 ticker = as.numeric(gsub("-", "", ticker_str))
 
 N = length(ticker_str)
@@ -141,42 +111,7 @@ N = length(ticker_str)
 #companies and macro-prudential variables; use exponential function for selected
 #macro-prudential variables that are expressed in first order differences
 
-if (channel %in% c("Americas", "SP500")) {
-  all_prices$USGG3M10YR = exp(all_prices$USGG3M10YR)
-  all_prices$USGG3M.INDEX = exp(all_prices$USGG3M.INDEX)
-  all_prices$MOODCBAA10YRSPD = exp(all_prices$MOODCBAA10YRSPD)} else
-if (channel == "Asia") {
-  all_prices$CN2YR = exp(all_prices$CN2YR)
-  all_prices$CN210SLOPE = exp(all_prices$CN210SLOPE)} else
-if (channel == "Europe") {
-  all_prices$BTPSDBR10 = exp(all_prices$BTPSDBR10)
-  all_prices$EUAggCorp10 = exp(all_prices$EUAggCorp10)
-  all_prices$DBR0110 = exp(all_prices$DBR0110)
-  all_prices$GDBR1.INDEX = exp(all_prices$GDBR1.INDEX)} else
-if (channel == "Crypto") {
-  all_prices$BV010082.Index = exp(all_prices$BV010082.Index)} else
-if (channel == "ER") {
-  all_prices$SLOPE_DBR = exp(all_prices$SLOPE_DBR)
-  all_prices$LIQ = exp(all_prices$LIQ)
-  all_prices$GE2 = exp(all_prices$GE2)
-  all_prices$BE = exp(all_prices$BE)
-  all_prices$SP = exp(all_prices$SP)
-  all_prices$IT = exp(all_prices$IT)
-  all_prices$AT = exp(all_prices$AT)
-  all_prices$GE = exp(all_prices$GE)
-  all_prices$FR = exp(all_prices$FR)
-  all_prices$PO = exp(all_prices$PO)
-  all_prices$IR = exp(all_prices$IR)
-  all_prices$FI = exp(all_prices$FI)
-  all_prices$NE = exp(all_prices$NE)
-  all_prices$GR = exp(all_prices$GR)} else
-if (channel == "EM") {
-  all_prices$USGG3M10YR = exp(all_prices$USGG3M10YR)
-  all_prices$USGG3M.INDEX = exp(all_prices$USGG3M.INDEX)
-  all_prices$MOODCBAA10YRSPD = exp(all_prices$MOODCBAA10YRSPD)
-  all_prices$JPEGSOSD.Index = exp(all_prices$JPEGSOSD.Index)
-  all_prices$JPEGSOSD.Index = all_prices$JPEGSOSD.Index / 100
-}
+all_prices$BV010082.Index = exp(all_prices$BV010082.Index)
 
 all_prices[, -1] = sapply(all_prices[, -1], as.numeric)
 
@@ -211,6 +146,9 @@ N_fixed = N1_fixed-N0_fixed+1
 ## 2.1 Varying companies or coins
 
 FRM_individ = vector(mode = "list")
+constraint = vector(mode = "list")
+intercept = vector(mode = "list")
+cond_quant = vector(mode = "list")
 J_dynamic = matrix(0, 1, N_upd)
 
 for (t in N0:N1) { 
@@ -227,18 +165,36 @@ for (t in N0:N1) {
   #Initialize adjacency matrix
   adj_matix = matrix(0, M_t, M_t) 
   est_lambda_t = vector()
+  constraint_t = vector()
+  intercept_t = vector()
+  cond_q_t = vector()
   #FRM quantile regression
   for (k in 1:M_t) { 
     est = FRM_Quantile_Regression(as.matrix(data), k, tau, I)
-    est_lambda = abs(data.matrix(est$lambda[which(est$Cgacv == min(est$Cgacv))]))
-    est_beta = t(as.matrix(est$beta[which(est$Cgacv == min(est$Cgacv)),]))
+    opt_iter = which(est$Cgacv == min(est$Cgacv))
+    est_beta = t(as.matrix(est$beta[opt_iter,]))
     adj_matix[k, -k] = est_beta
-    est_lambda_t = c(est_lambda_t, est_lambda)
+    est_beta0 = est$beta0[opt_iter]
+    est_lambda_t = c(est_lambda_t, abs(est$lambda[opt_iter]))
+    constraint_t = c(constraint_t, est$s[opt_iter])
+    intercept_t = c(intercept_t, est_beta0)
+    cond_q = est_beta0 + data[s,-k] %*% as.vector(est_beta)
+    cond_q_t = c(cond_q_t, cond_q)
   }
   #List of vectors of different size with different column names
+  colnames_t = colnames(data)[1:J_t]
   est_lambda_t = t(data.frame(est_lambda_t[1:J_t]))
-  colnames(est_lambda_t) = colnames(data)[1:J_t]
+  colnames(est_lambda_t) = colnames_t
   FRM_individ[[t-N0+1]] = est_lambda_t
+  constraint_t = t(data.frame(constraint_t[1:J_t]))
+  colnames(constraint_t) = colnames_t
+  constraint[[t-N0+1]] = constraint_t
+  intercept_t = t(data.frame(intercept_t[1:J_t]))
+  colnames(intercept_t) = colnames_t
+  intercept[[t-N0+1]] = intercept_t
+  cond_q_t = t(data.frame(cond_q_t[1:J_t]))
+  colnames(cond_q_t) = colnames_t
+  cond_quant[[t-N0+1]] = cond_q_t
   #Save adjacency matrix
   colnames(adj_matix) = colnames(data)
   rownames(adj_matix) = colnames(data)
@@ -285,12 +241,13 @@ for (t in N0_fixed:N1_fixed) {
 ## 3. Updated FRM index
 
 names(FRM_individ) = ticker_str[N0:N1]
+names(intercept) = ticker_str[N0:N1]
+names(constraint) = ticker_str[N0:N1]
+names(cond_quant) = ticker_str[N0:N1]
 
 #Append R dataset to the historical file
 {if (file.exists(paste0(output_path, "/Lambda/FRM_", channel, ".rds"))) {
   FRM_history_prev = readRDS(paste0(output_path, "/Lambda/FRM_", channel, ".rds"))
-  #Uncomment if appending to the older format output
-  #names(FRM_history_prev) = as.Date(names(FRM_history_prev), format = "%Y %m %d")
   #Delete to be able to overwrite
   N0_del = which(names(FRM_history_prev) == ticker_str[N0])
   N1_del = which(names(FRM_history_prev) == ticker_str[N1])
@@ -317,6 +274,37 @@ lambdas_wide = round(lambdas_wide, digits = 6)
 lambdas_wide[, 1] = names(FRM_history)
 colnames(lambdas_wide) = c("date", stock_names)
 write.csv(lambdas_wide, paste0(output_path, "/Lambda/lambdas_wide.csv"), 
+          row.names = FALSE, quote = FALSE)
+
+#Transform the list of constraints, intercepts and quantiles into a wide dataset
+stock_names = vector()
+for (t in 1:N_upd) stock_names = c(stock_names, attributes(constraint[[t]])$dimnames[[2]])
+stock_names = unique(stock_names)
+N_names = length(stock_names)
+constraint_wide = matrix(0, N_upd, N_names+1)
+intercept_wide = matrix(0, N_upd, N_names+1)
+cond_quant_wide = matrix(0, N_upd, N_names+1)
+for (k in 1:N_names) 
+  for (t in 1:N_upd) 
+    if (stock_names[k] %in% attributes(constraint[[t]])$dimnames[[2]]) {
+      constraint_wide[t, k+1] = constraint[[t]][, stock_names[k]]
+      intercept_wide[t, k+1] = intercept[[t]][, stock_names[k]]
+      cond_quant_wide[t, k+1] = cond_quant[[t]][, stock_names[k]]
+    }
+constraint_wide = round(constraint_wide, digits = 6)
+constraint_wide[, 1] = names(constraint)
+colnames(constraint_wide) = c("date", stock_names)
+write.csv(constraint_wide, paste0(output_path, "/Lambda/constraint_wide.csv"), 
+          row.names = FALSE, quote = FALSE)
+intercept_wide = round(intercept_wide, digits = 6)
+intercept_wide[, 1] = names(constraint)
+colnames(intercept_wide) = c("date", stock_names)
+write.csv(intercept_wide, paste0(output_path, "/Lambda/intercept_wide.csv"), 
+          row.names = FALSE, quote = FALSE)
+cond_quant_wide = round(cond_quant_wide, digits = 6)
+cond_quant_wide[, 1] = names(constraint)
+colnames(cond_quant_wide) = c("date", stock_names)
+write.csv(cond_quant_wide, paste0(output_path, "/Lambda/cond_quant_wide.csv"), 
           row.names = FALSE, quote = FALSE)
 
 #Saved fixed lambdas for the specified period
@@ -371,19 +359,7 @@ top_10 = top_10[, order(top_10, decreasing = T)]
 top_10 = top_10[1:10]
 top_10 = round(top_10, digits = 6)
 top_10 = cbind(names(top_10), unname(top_10))
-if (channel == "Crypto") colnames(top_10) = c("Coin", "Risk") else 
-  colnames(top_10) = c("Company", "Risk")
-
-#Read a file which stores full names and abbreviations of companies
-if (channel %in% c("Americas", "Europe")) {
-  fullnames = read.csv(file = paste0("Input/", channel, "/", 
-                                     channel,"_names.csv"), header = TRUE)
-  fullnames$ticker = gsub(" ", ".", fullnames$ticker)
-  top_10_fullnames = sapply(1:10, function(i)
-    as.character(fullnames$Name[which(fullnames$ticker == names(top_10)[i])]))
-  top_10[, 1] = top_10_fullnames
-}
-
+colnames(top_10) = c("Coin", "Risk") 
 write.csv(top_10, paste0(output_path, "/Top/top10_", date_end, "_", 
                          channel, ".csv"), row.names = FALSE, quote = FALSE)
 

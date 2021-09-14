@@ -1,6 +1,6 @@
 rm(list = ls(all = TRUE))
 
-wdir = "/Users/annshchekina/Desktop/Kod/FRM_All"
+wdir = "/Users/annshchekina/Desktop/Kod/FRM_Crypto"
 
 outliers = c(301,302,651)
 
@@ -11,6 +11,7 @@ setwd(wdir)
 
 input_path = paste0("Output/", channel, "/Lambda")
 output_path = paste0("Output/", channel, "/Prediction") 
+output_path_quant = paste0("Output/", channel, "/Sensitivity/Plots") 
 
 library(dplyr)
 library(bootstrap)
@@ -18,7 +19,7 @@ library(bootstrap)
 #### Calculating time series ####
 
 FRM_index = read.csv(file = paste0(input_path, "/FRM_Crypto_index.csv"), header = TRUE)
-crix = read.csv(file = paste0(output_path, "/crix.txt"), header = TRUE) 
+crix = read.csv(file = paste0(output_path, "/crix.csv"), header = TRUE) 
 
 FRM_crix = merge(FRM_index, crix, by = "date")
 colnames(FRM_crix)[3] = "crix"
@@ -37,6 +38,23 @@ FRM_crix = FRM_crix %>% cbind(var)
 cor.test(FRM_crix$var[-c(1:(s-1))], FRM_crix$frm[-c(1:(s-1))])
 
 #### end ####
+
+cond_quant_btc = read.csv(file = paste0(input_path, "/cond_quant_wide.csv"), header = TRUE)[, "BTC"] 
+btc_price = read.csv(file = paste0("Input/", channel, "/20141128-20210709/Crypto_Price_20210709.csv"), header = TRUE)[, c("date", "BTC")]
+btc_price = btc_price[which(btc_price$date=="2015-01-31"):nrow(btc_price),]
+btc_rn_ln = (btc_price$BTC[-1]/btc_price$BTC[-nrow(btc_price)]) %>% log()
+
+png(paste0(output_path_quant, "/Plots/cond_quant_btc.png"), width = 900, height = 600, bg = "transparent")
+
+plot(btc_rn_ln, type = "l", col = "blue", xlab = "", ylab = "", xaxt = "n", lwd = 2, ylim = c(-0.1, 0.1))
+lines(cond_quant_btc, type = "l", col = "black",axes = FALSE, xlab = "", ylab = "", xaxt = "n")
+axis(side = 4, at = pretty(range(FRM_crix$log_rn)))
+div = floor(N/5)
+ll = c(1, div, 2*div, 3*div, 4*div, N)
+axis(1, at = ll, labels = FRM_crix$date[ll])
+mtext("CRIX log return", side = 4, line = 3)
+
+dev.off()
 
 #### Plotting ####
 
